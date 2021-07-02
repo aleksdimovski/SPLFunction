@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# install script
+
+echo "Start Installation!"
+
+
+install_menhir() {
+sudo apt-get install -y ocaml-interp
+sudo apt-get install -y ocaml-findlib
+sudo apt-get install -y menhir
+echo ¨Done menhir¨
+}
+
+install_opam() {
+sudo apt-get install -y opam
+opam init
+eval $(opam env)
+echo ¨Done opam¨
+}
+
+install_opam_libs() {
+opam install -y ounit
+opam install -y depext
+opam depext -y apron
+opam install -y apron
+opam install -y zarith
+echo ¨Done opam_libs¨
+}
+
+install_menhir
+install_opam
+install_opam_libs
+
+echo "Done Installation!"
