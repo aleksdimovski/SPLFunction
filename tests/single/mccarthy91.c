@@ -1,0 +1,24 @@
+
+/* iterative implementation of mccarthy91   */
+
+//features int[0,31] A;
+
+int main() {
+	int x1, x2=1;
+	int A = [0,31]; 
+  	if (A<2) x1=[0,100]; 
+		else x1=[101,110]; 
+	
+	while (x2 >= 1) {
+		if (x1 > 100) {
+			x1 = x1 - 10;
+			x2 = x2 - 1;
+		} else {
+			x1 = x1 + 11;
+			x2 = x2 + 1;
+		}
+	}
+	
+	return x2;
+	
+}
