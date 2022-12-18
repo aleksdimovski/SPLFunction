@@ -17,7 +17,7 @@ designed for performing CTL temporal analysis of C program families.
 # Installation
 
 
-Downloaf and untar the file SPLfunction2.tra.gz
+Download and untar the file SPLfunction2.tar.gz
 
 
 
