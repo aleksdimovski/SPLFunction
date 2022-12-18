@@ -21,7 +21,7 @@ Download and untar the file SPLfunction2.tar.gz
 
 
 
-# Compiling SPLFunction
+# Compiling SPLFunction2
 
 Once all required libraries are installed, enter the folder 'SPLfunction2' and 'ocamlbuild' can be used to build lifted analyzer with the following command:
 
