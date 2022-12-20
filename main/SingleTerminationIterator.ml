@@ -307,7 +307,7 @@ struct
       bwdMap_print !fmt !bwdInvMap;
     end;
     let b = D.defined i in 
-	Format.fprintf !fmt "Ranking function is: \n%a\n" D.print (InvMap.find 1 !bwdInvMap); 
-	  b
+    Format.fprintf !fmt "Ranking function is: \n%a\n" D.print (InvMap.find 1 !bwdInvMap); 
+    b
 
 end

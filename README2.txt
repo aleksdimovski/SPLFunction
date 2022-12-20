@@ -17,11 +17,11 @@ designed for performing CTL temporal analysis of C program families.
 # Installation
 
 
-Download and untar the file SPLfunction2.tar.gz
+Downloaf and untar the file SPLfunction2.tra.gz
 
 
 
-# Compiling SPLFunction2
+# Compiling SPLFunction
 
 Once all required libraries are installed, enter the folder 'SPLfunction2' and 'ocamlbuild' can be used to build lifted analyzer with the following command:
 

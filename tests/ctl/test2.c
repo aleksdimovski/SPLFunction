@@ -7,7 +7,7 @@ suggested parameters:
 - backward widening delay = 3
 */
 
-features int[0,3] A;
+features int[0,2] A;
 features int[1,2] B;
 
 void main() {

@@ -121,10 +121,34 @@ module Maketuplerf(R: RANKING_FUNCTION): TUPLERF  = struct
 	let configs = u1.configs in 
 	{ elems = elems; env = env; vars = vars; configs = configs}	
 
+  let dual_widen u1 u2 = 
+    let elems = List.map2 (fun e1 e2 -> (R.dual_widen e1 e2)) u1.elems u2.elems in
+	let env = u1.env in
+    let vars = u1.vars in 
+	let configs = u1.configs in 
+	{ elems = elems; env = env; vars = vars; configs = configs}	
 
+  let reset u1 b = 
+    let elems = List.map (fun e1 -> (R.reset e1 b)) u1.elems in
+    let env = u1.env in
+    let vars = u1.vars in 
+    let configs = u1.configs in 
+    { elems = elems; env = env; vars = vars; configs = configs}	
+
+  let resetmask u1 u2 b = 
+    let elems = List.map2 (fun e1 e2 -> (R.reset ~mask:e1 e2 b)) u1.elems u2.elems in
+    let env = u1.env in
+    let vars = u1.vars in 
+    let configs = u1.configs in 
+    { elems = elems; env = env; vars = vars; configs = configs}
   (*  *)
 
-
+  let label l property u1 = 
+    let elems = List.map (fun p -> (let pp = try R.reset p (fst (StringMap.find l property)) with Not_found -> p in pp)) u1.elems in 
+    let env = u1.env in
+    let vars = u1.vars in 
+    let configs = u1.configs in 
+    { elems = elems; env = env; vars = vars; configs = configs}
  
 
   let bwdAssign ?(underapprox=false) u (x,e) = match x with

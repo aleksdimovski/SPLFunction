@@ -22,6 +22,8 @@ let ordinals = ref false
 let precondition = ref "true"
 let time = ref true
 let noinline = ref false
+let property = ref "" 
+let istree = ref false 
 
 let parseFile filename =
   let f = open_in filename in
@@ -45,7 +47,43 @@ let parseFile filename =
     else
       failwith e
 
+let parsePropertyString str =
+  let lex = Lexing.from_string str in
+  try
+    PropertyParser.file PropertyLexer.start lex 
+  with
+  | PropertyParser.Error ->
+    Printf.eprintf "Parse Error (Invalid Syntax) near %s\n" (IntermediateSyntax.position_tostring lex.Lexing.lex_start_p);
+    failwith "Parse Error"
+  | Failure e ->
+    if e == "lexing: empty token" then 
+      begin
+        Printf.eprintf "Parse Error (Invalid Token) near %s\n" (IntermediateSyntax.position_tostring lex.Lexing.lex_start_p);
+        failwith "Parse Error"
+      end 
+    else
+      failwith e
 
+
+let parseProperty filename =
+  let f = open_in filename in
+  let lex = Lexing.from_channel f in
+  try
+    lex.Lexing.lex_curr_p <- { lex.Lexing.lex_curr_p
+                               with Lexing.pos_fname = filename; };
+    let r = PropertyParser.file PropertyLexer.start lex in
+    close_in f; r
+  with
+  | PropertyParser.Error -> Printf.eprintf "Parse Error (Invalid Syntax) near %s\n" (IntermediateSyntax.position_tostring lex.Lexing.lex_start_p);
+    failwith "Parse Error"
+  | Failure e ->
+    if e == "lexing: empty token" then 
+      begin
+        Printf.eprintf "Parse Error (Invalid Token) near %s\n" (IntermediateSyntax.position_tostring lex.Lexing.lex_start_p);
+        failwith "Parse Error"
+      end 
+    else
+      failwith e
 
 let parse_args () =
   let rec doit args =
@@ -83,9 +121,21 @@ let parse_args () =
     (* Single analysis -------------------------------*)
     | "-single"::r -> (* single analysis *)
       analysis := "single"; doit r
+    | "-single-guarantee"::x::r -> (* guarantee analysis *)
+      analysis := "single-guarantee"; property := x; doit r         
+    | "-single-recurrence"::x::r -> (* guarantee analysis *)
+      analysis := "single-recurrence"; property := x; doit r           
     (* Tuple analysis -------------------------------*)
     | "-tuple"::r -> (* tuple analysis *)
       analysis := "tuple"; doit r
+    | "-tuple-guarantee"::x::r -> (* guarantee analysis *)
+      analysis := "tuple-guarantee"; property := x; doit r      
+    | "-tree-guarantee"::x::r -> (* guarantee analysis *)
+      analysis := "tree-guarantee"; property := x; doit r    
+    | "-tree-recurrence"::x::r -> (* guarantee analysis *)
+      analysis := "tree-recurrence"; property := x; doit r             
+    | "-tuple-recurrence"::x::r -> (* guarantee analysis *)
+      analysis := "tuple-recurrence"; property := x; doit r            
     | "-tree"::r -> (* dection tree analysis *)
       analysis := "tree"; doit r
     | "-sketch"::r -> (* Sketch analysis *)
@@ -123,6 +173,33 @@ module SingleTerminationPolyhedra =
 module SingleTerminationPolyhedraOrdinals =
   SingleTerminationIterator.SingleTerminationIterator(DecisionTree.TSOP)
 
+module SingleGuaranteeBoxes =
+  SingleGuaranteeIterator.SingleGuaranteeIterator(DecisionTree.TSAB)
+module SingleGuaranteeOctagons =
+  SingleGuaranteeIterator.SingleGuaranteeIterator(DecisionTree.TSAO)
+module SingleGuaranteePolyhedra =
+  SingleGuaranteeIterator.SingleGuaranteeIterator(DecisionTree.TSAP)
+
+module SingleRecurrenceBoxes =
+  SingleRecurrenceIterator.SingleRecurrenceIterator(DecisionTree.TSAB)
+module SingleRecurrenceOctagons =
+  SingleRecurrenceIterator.SingleRecurrenceIterator(DecisionTree.TSAO)
+module SingleRecurrencePolyhedra =
+  SingleRecurrenceIterator.SingleRecurrenceIterator(DecisionTree.TSAP)
+
+module TupleGuaranteeBoxes =
+  TupleGuaranteeIterator.TupleGuaranteeIterator(Maketuplep.TB)(Maketuplerf.TRB)
+module TupleGuaranteeOctagons =
+  TupleGuaranteeIterator.TupleGuaranteeIterator(Maketuplep.TO)(Maketuplerf.TRO)
+module TupleGuaranteePolyhedra =
+  TupleGuaranteeIterator.TupleGuaranteeIterator(Maketuplep.TP)(Maketuplerf.TRP)
+
+module TupleRecurrenceBoxes =
+  TupleRecurrenceIterator.TupleRecurrenceIterator(Maketuplep.TB)(Maketuplerf.TRB)
+module TupleRecurrenceOctagons =
+  TupleRecurrenceIterator.TupleRecurrenceIterator(Maketuplep.TO)(Maketuplerf.TRO)
+module TupleRecurrencePolyhedra =
+  TupleRecurrenceIterator.TupleRecurrenceIterator(Maketuplep.TP)(Maketuplerf.TRP)
 
 module TupleTerminationBoxes =
   TupleTerminationIterator.TupleTerminationIterator(Maketuplep.TB)(Maketuplerf.TRB)
@@ -193,7 +270,7 @@ let run_analysis analysis_function program () =
     let result = if terminating then "TRUE" else "UNKNOWN" in
     Format.fprintf !fmt "%s\n" result;
     if !time then
-      Format.fprintf !fmt "Time: %f s\n" (stop-.start);
+      if (!istree) then Format.fprintf !fmt "Time: %f s\n" ((stop-.start)/.4.0) else Format.fprintf !fmt "Time: %f s\n" (stop-.start);
     Format.fprintf !fmt "\nDone.\n"
   with
   | Iterator.Timeout ->
@@ -218,6 +295,60 @@ let single () =
   in run_analysis analysis_function program ()
 
 
+let single_guar () =
+  if !filename = "" then raise (Invalid_argument "No Source File Specified");
+  if !property = "" then raise (Invalid_argument "No Property File Specified");
+  let sources = parseFile !filename in
+  let property = parseProperty !property in
+  let (program, property) =
+    ItoA.prog_itoa ~property:(!main,property) sources in
+  let property =
+    match property with
+    | None -> raise (Invalid_argument "Unknown Property")
+    | Some property -> property
+  in
+  if not !minimal then
+    begin
+      Format.fprintf !fmt "\nAbstract Syntax:\n";
+      AbstractSyntax.prog_print !fmt program;
+      Format.fprintf !fmt "\nProperty: ";
+      AbstractSyntax.property_print !fmt property;
+    end;
+  let analysis_function =
+    match !domain with
+    | "boxes" -> if !ordinals then SingleGuaranteeBoxes.analyze else SingleGuaranteeBoxes.analyze
+    | "octagons" -> if !ordinals then SingleGuaranteeOctagons.analyze else SingleGuaranteeOctagons.analyze
+    | "polyhedra" -> if !ordinals then SingleGuaranteePolyhedra.analyze else SingleGuaranteePolyhedra.analyze
+    | _ -> raise (Invalid_argument "Unknown Abstract Domain")
+  in run_analysis (analysis_function property) program ()
+
+let single_recur () =
+  if !filename = "" then raise (Invalid_argument "No Source File Specified");
+  if !property = "" then raise (Invalid_argument "No Property File Specified");
+  let sources = parseFile !filename in
+  let property = parseProperty !property in
+  let (program, property) =
+    ItoA.prog_itoa ~property:(!main,property) sources in
+  let property =
+    match property with
+    | None -> raise (Invalid_argument "Unknown Property")
+    | Some property -> property
+  in
+  if not !minimal then
+    begin
+      Format.fprintf !fmt "\nAbstract Syntax:\n";
+      AbstractSyntax.prog_print !fmt program;
+      Format.fprintf !fmt "\nProperty: ";
+      AbstractSyntax.property_print !fmt property;
+    end;
+  let analysis_function =
+    match !domain with
+    | "boxes" -> if !ordinals then SingleRecurrenceBoxes.analyze else SingleRecurrenceBoxes.analyze
+    | "octagons" -> if !ordinals then SingleRecurrenceOctagons.analyze else SingleRecurrenceOctagons.analyze
+    | "polyhedra" -> if !ordinals then SingleRecurrencePolyhedra.analyze else SingleRecurrencePolyhedra.analyze
+    | _ -> raise (Invalid_argument "Unknown Abstract Domain")
+  in run_analysis (analysis_function property) program ()
+
 let tuple () =
   if !filename = "" then raise (Invalid_argument "No Source File Specified");
   let sources = parseFile !filename in
@@ -236,6 +367,59 @@ let tuple () =
     | _ -> raise (Invalid_argument "Unknown Abstract Domain") 
   in run_analysis analysis_function program ()  
 
+let tuple_guar () =
+  if !filename = "" then raise (Invalid_argument "No Source File Specified");
+  if !property = "" then raise (Invalid_argument "No Property File Specified");
+  let sources = parseFile !filename in
+  let property = parseProperty !property in
+  let (program, property) =
+    ItoA.prog_itoa ~property:(!main,property) sources in
+  let property =
+    match property with
+    | None -> raise (Invalid_argument "Unknown Property")
+    | Some property -> property
+  in
+  if not !minimal then
+    begin
+      Format.fprintf !fmt "\nAbstract Syntax:\n";
+      AbstractSyntax.prog_print !fmt program;
+      Format.fprintf !fmt "\nProperty: ";
+      AbstractSyntax.property_print !fmt property;
+    end;
+  let analysis_function =
+    match !domain with
+    | "boxes" -> if !ordinals then TupleGuaranteeBoxes.analyze else TupleGuaranteeBoxes.analyze
+    | "octagons" -> if !ordinals then TupleGuaranteeOctagons.analyze else TupleGuaranteeOctagons.analyze
+    | "polyhedra" -> if !ordinals then TupleGuaranteePolyhedra.analyze else TupleGuaranteePolyhedra.analyze
+    | _ -> raise (Invalid_argument "Unknown Abstract Domain")
+  in run_analysis (analysis_function property) program ()
+
+let tuple_recur () =
+  if !filename = "" then raise (Invalid_argument "No Source File Specified");
+  if !property = "" then raise (Invalid_argument "No Property File Specified");
+  let sources = parseFile !filename in
+  let property = parseProperty !property in
+  let (program, property) =
+    ItoA.prog_itoa ~property:(!main,property) sources in
+  let property =
+    match property with
+    | None -> raise (Invalid_argument "Unknown Property")
+    | Some property -> property
+  in
+  if not !minimal then
+    begin
+      Format.fprintf !fmt "\nAbstract Syntax:\n";
+      AbstractSyntax.prog_print !fmt program;
+      Format.fprintf !fmt "\nProperty: ";
+      AbstractSyntax.property_print !fmt property;
+    end;
+  let analysis_function =
+    match !domain with
+    | "boxes" -> if !ordinals then TupleRecurrenceBoxes.analyze else TupleRecurrenceBoxes.analyze
+    | "octagons" -> if !ordinals then TupleRecurrenceOctagons.analyze else TupleRecurrenceOctagons.analyze
+    | "polyhedra" -> if !ordinals then TupleRecurrencePolyhedra.analyze else TupleRecurrencePolyhedra.analyze
+    | _ -> raise (Invalid_argument "Unknown Abstract Domain")
+  in run_analysis (analysis_function property) program ()
 
 let dt () =
   if !filename = "" then raise (Invalid_argument "No Source File Specified");
@@ -298,7 +482,13 @@ let doit () =
   parse_args ();
   match !analysis with
   | "single" -> single ()
+  | "single-guarantee" -> single_guar ()
+  | "single-recurrence" -> single_recur ()  
   | "tuple" -> tuple () (*raise (Invalid_argument "Undefined Yet Analysis") *)
+  | "tree-guarantee" -> istree:=true; tuple_guar () 
+  | "tree-recurrence" -> istree:=true; tuple_recur ()   
+  | "tuple-guarantee" -> tuple_guar ()  
+  | "tuple-recurrence" -> tuple_recur ()    
   | "tree" -> dt()  (*raise (Invalid_argument "Undefined Yet Analysis")  *)
   | "sketch" -> sketch() 
   | "sketchtuple" -> sketchtuple()   

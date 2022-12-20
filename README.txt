@@ -117,6 +117,9 @@ Examples from "Motivating Example" section
 
 enter the folder that contains the tool, and write
 
+$ ./Main.native -single-guarantee tests/ctl/property1.ctl -domain polyhedra tests/terminate/cav2006-cpp.c
+./Main.native -tuple-guarantee tests/ctl/property2.ctl -domain polyhedra tests/ctl/test_global.c
+
 $ ./Main.native -tree -domain polyhedra tests/terminate/cav2006-cpp.c   	// to perform decision tree-based analysis using Polyhedra domain of cav2006-cpp.c
 $ ./Main.native -tuple -domain polyhedra tests/terminate/cav2006-cpp.c  // to perform tuple-based analysis using Polyhedra domain of cav2006-cpp.c
 $ ./Main.native -single -domain polyhedra tests/single/cav2006.c  // to perform single analysis using Polyhedra domain of cav2006.c, which is variability encoding of cav2006-cpp.c

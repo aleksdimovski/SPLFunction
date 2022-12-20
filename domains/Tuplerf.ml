@@ -36,12 +36,17 @@ module type TUPLERF = sig
   val join : kind -> t -> t -> t
   val meet : kind -> t -> t -> t
   val widen : ?jokers:int -> t -> t -> t  
+  val reset : t -> bExp -> t
+  val resetmask : t -> t -> bExp -> t
+  val dual_widen : t -> t -> t  
 
   val bwdAssign : ?underapprox:bool -> t -> aExp * aExp -> t
   val filter : ?underapprox:bool -> t -> bExp -> t
   val config_filter : Environment.t -> t -> bExp -> t  
   val config_filter_not : Environment.t -> t -> t -> t   
   val defined : t -> bool list
+  
+  val label : string -> property -> t -> t
 
   val print : Format.formatter -> t -> unit
   val print_assert : Format.formatter -> t -> unit
